@@ -1,9 +1,8 @@
 import "./global.css";
-import React, { useCallback } from "react";
-import { View, ActivityIndicator, Text } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { View, ActivityIndicator, Text, AppState } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import {
   useFonts as useBaloo,
@@ -15,44 +14,76 @@ import {
   Nunito_400Regular,
   Nunito_600SemiBold,
 } from "@expo-google-fonts/nunito";
-import { TodoProvider } from "./context/TodoContext";
-import DashboardScreen from "./screens/DashboardScreen";
+import { ThemeProvider, useAppTheme } from "./context/ThemeContext";
+import { initDb, flushDb } from "./lib/db";
+import RootNavigator from "./navigation/RootNavigator";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-export default function App() {
+// Rendered *inside* ThemeProvider so the loading state itself is
+// theme-aware (no flash of the wrong background while everything hydrates).
+function AppContent() {
+  const { isThemeReady, colors } = useAppTheme();
+  const [dbReady, setDbReady] = useState(false);
+
   const [balooLoaded] = useBaloo({ Baloo2_600SemiBold, Baloo2_700Bold });
   const [nunitoLoaded] = useNunito({ Nunito_400Regular, Nunito_600SemiBold });
   const fontsLoaded = balooLoaded && nunitoLoaded;
+  const appReady = fontsLoaded && isThemeReady && dbReady;
 
-  const onLayoutReady = useCallback(async () => {
-    if (fontsLoaded) {
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      await initDb();
+      if (mounted) setDbReady(true);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Flush any pending debounced writes whenever the app is backgrounded or
+  // closed, so an edit made seconds before switching apps is never lost.
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "background" || state === "inactive") {
+        flushDb().catch(() => {});
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
+  const hideSplash = useCallback(async () => {
+    if (appReady) {
       await SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsLoaded]);
+  }, [appReady]);
 
-  React.useEffect(() => {
-    onLayoutReady();
-  }, [onLayoutReady]);
+  useEffect(() => {
+    hideSplash();
+  }, [hideSplash]);
 
-  if (!fontsLoaded) {
+  if (!appReady) {
     return (
-      <View className="flex-1 bg-cream items-center justify-center">
-        <ActivityIndicator size="large" color="#7C3AED" />
-        <Text className="text-inkSoft text-[13px] mt-4 font-body">
-          Loading your quests…
+      <View style={{ backgroundColor: colors.bgApp }} className="flex-1 items-center justify-center">
+        <ActivityIndicator size="large" color={colors.brand} />
+        <Text style={{ color: colors.textSecondary }} className="text-[13px] mt-4 font-body">
+          Loading your tasks…
         </Text>
       </View>
     );
   }
 
+  return <RootNavigator />;
+}
+
+export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <TodoProvider>
-          <StatusBar style="light" />
-          <DashboardScreen />
-        </TodoProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

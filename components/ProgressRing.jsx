@@ -1,10 +1,18 @@
 import React, { useEffect, useRef } from "react";
 import { View, Text, Animated, Easing } from "react-native";
 import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
+import { useAppTheme } from "../context/ThemeContext";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-export default function ProgressRing({ pct = 0, size = 76, strokeWidth = 8 }) {
+export default function ProgressRing({
+  pct = 0,
+  size = 76,
+  strokeWidth = 8,
+  trackColor,
+  textColor,
+}) {
+  const { colors } = useAppTheme();
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const animatedPct = useRef(new Animated.Value(0)).current;
@@ -23,6 +31,9 @@ export default function ProgressRing({ pct = 0, size = 76, strokeWidth = 8 }) {
     outputRange: [circumference, 0],
   });
 
+  const resolvedTrack = trackColor || colors.progressTrack;
+  const resolvedText = textColor || colors.textPrimary;
+
   return (
     <View style={{ width: size, height: size }} className="items-center justify-center">
       <Svg width={size} height={size}>
@@ -36,7 +47,7 @@ export default function ProgressRing({ pct = 0, size = 76, strokeWidth = 8 }) {
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="rgba(255,255,255,0.35)"
+          stroke={resolvedTrack}
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -55,7 +66,9 @@ export default function ProgressRing({ pct = 0, size = 76, strokeWidth = 8 }) {
         />
       </Svg>
       <View className="absolute items-center justify-center">
-        <Text className="text-white font-display text-[16px]">{pct}%</Text>
+        <Text style={{ color: resolvedText }} className="font-display text-[14px]">
+          {pct}%
+        </Text>
       </View>
     </View>
   );

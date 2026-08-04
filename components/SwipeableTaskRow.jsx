@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     width: 84,
-    borderRadius: 24,
+    borderRadius: 16,
     marginVertical: 6,
   },
   actionEmoji: {

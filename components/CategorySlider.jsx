@@ -1,17 +1,23 @@
 import React from "react";
 import { View, Text, Pressable, ScrollView } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { categories } from "../constants/theme";
-import { useTodo } from "../context/TodoContext";
+import { useNavigation } from "@react-navigation/native";
+import { useCategories, countTasksByCategory } from "../store/categoriesStore";
+import { useTasks } from "../store/tasksStore";
+import { useAppTheme } from "../context/ThemeContext";
 
-export default function CategorySlider() {
-  const { activeCategory, setActiveCategory, categoryCounts } = useTodo();
-
-  const totalActive = Object.values(categoryCounts).reduce((a, b) => a + b, 0);
+export default function CategorySlider({ activeCategoryId, onSelectCategory }) {
+  const navigation = useNavigation();
+  const { colors } = useAppTheme();
+  const categories = useCategories();
+  const tasks = useTasks();
+  const counts = countTasksByCategory(tasks);
+  const totalActive = tasks.filter((t) => t.status !== "completed" && t.status !== "archived").length;
 
   const handleSelect = (id) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setActiveCategory(id);
+    onSelectCategory(id);
   };
 
   return (
@@ -19,83 +25,92 @@ export default function CategorySlider() {
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 4, gap: 10 }}
-      className="mt-5 mb-1"
+      className="mt-4 mb-1"
     >
-      <Pressable onPress={() => handleSelect("all")} className="relative">
+      <Pressable
+        onPress={() => handleSelect(null)}
+        className="relative min-h-[44px]"
+        accessibilityRole="button"
+        accessibilityState={{ selected: activeCategoryId === null }}
+        accessibilityLabel="All tasks"
+      >
         <View
-          className={`px-4 py-3 rounded-3xl border-2 flex-row items-center ${
-            activeCategory === "all"
-              ? "bg-grape border-grape"
-              : "bg-white border-inkFaint/20"
+          className={`px-4 py-3 rounded-2xl border flex-row items-center min-h-[44px] ${
+            activeCategoryId === null ? "bg-grape border-grape" : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700"
           }`}
           style={{
-            shadowColor: "#7C3AED",
-            shadowOpacity: activeCategory === "all" ? 0.3 : 0,
+            shadowColor: colors.shadowColor,
+            shadowOpacity: activeCategoryId === null ? 0.25 : 0,
             shadowRadius: 10,
             shadowOffset: { width: 0, height: 4 },
-            elevation: activeCategory === "all" ? 4 : 0,
+            elevation: activeCategoryId === null ? 4 : 0,
           }}
         >
-          <Text className="text-[16px] mr-1.5">🌈</Text>
+          <Ionicons name="apps-outline" size={15} color={activeCategoryId === null ? "#FFFFFF" : colors.textPrimary} />
           <Text
-            className={`font-heading text-[13px] ${
-              activeCategory === "all" ? "text-white" : "text-ink"
-            }`}
+            className={`font-heading text-[13px] ml-1.5 ${activeCategoryId === null ? "text-white" : "text-slate-900 dark:text-slate-100"}`}
           >
-            All Quests
+            All Tasks
           </Text>
         </View>
         {totalActive > 0 && (
-          <View className="absolute -top-2 -right-2 bg-coral rounded-full min-w-[22px] h-[22px] items-center justify-center px-1 border-2 border-cream">
-            <Text className="text-white font-heading text-[10px]">
-              {totalActive}
-            </Text>
+          <View className="absolute -top-2 -right-2 bg-coral rounded-full min-w-[22px] h-[22px] items-center justify-center px-1 border-2" style={{ borderColor: colors.bgApp }}>
+            <Text className="text-white font-heading text-[10px]">{totalActive}</Text>
           </View>
         )}
       </Pressable>
 
       {categories.map((cat) => {
-        const active = activeCategory === cat.id;
-        const count = categoryCounts[cat.id] || 0;
+        const active = activeCategoryId === cat.id;
+        const count = counts[cat.id] || 0;
         return (
           <Pressable
             key={cat.id}
             onPress={() => handleSelect(cat.id)}
-            className="relative"
+            className="relative min-h-[44px]"
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={`${cat.name} tasks`}
           >
             <View
-              className="px-4 py-3 rounded-3xl border-2 flex-row items-center"
+              className="px-4 py-3 rounded-2xl border flex-row items-center min-h-[44px]"
               style={{
-                backgroundColor: active ? cat.color : "#FFFFFF",
-                borderColor: active ? cat.color : "rgba(167,159,192,0.2)",
+                backgroundColor: active ? cat.color : colors.surface,
+                borderColor: active ? cat.color : colors.border,
                 shadowColor: cat.color,
-                shadowOpacity: active ? 0.3 : 0,
+                shadowOpacity: active ? 0.25 : 0,
                 shadowRadius: 10,
                 shadowOffset: { width: 0, height: 4 },
                 elevation: active ? 4 : 0,
               }}
             >
-              <Text className="text-[16px] mr-1.5">{cat.emoji}</Text>
-              <Text
-                className="font-heading text-[13px]"
-                style={{ color: active ? "#FFFFFF" : "#2B2140" }}
-              >
-                {cat.label}
+              <Ionicons name={cat.icon} size={14} color={active ? "#FFFFFF" : cat.color} />
+              <Text className="font-heading text-[13px] ml-1.5" style={{ color: active ? "#FFFFFF" : colors.textPrimary }}>
+                {cat.name}
               </Text>
             </View>
             {count > 0 && (
               <View
-                className="absolute -top-2 -right-2 rounded-full min-w-[22px] h-[22px] items-center justify-center px-1 border-2 border-cream"
-                style={{ backgroundColor: cat.color }}
+                className="absolute -top-2 -right-2 rounded-full min-w-[22px] h-[22px] items-center justify-center px-1 border-2"
+                style={{ backgroundColor: cat.color, borderColor: colors.bgApp }}
               >
-                <Text className="text-white font-heading text-[10px]">
-                  {count}
-                </Text>
+                <Text className="text-white font-heading text-[10px]">{count}</Text>
               </View>
             )}
           </Pressable>
         );
       })}
+
+      <Pressable
+        onPress={() => navigation.navigate("CategoryManager")}
+        className="flex-row items-center rounded-2xl px-4 py-3 border border-dashed min-h-[44px]"
+        style={{ borderColor: colors.borderStrong }}
+      >
+        <Ionicons name="settings-outline" size={14} color={colors.textTertiary} />
+        <Text style={{ color: colors.textTertiary }} className="font-heading text-[13px] ml-1.5">
+          Manage
+        </Text>
+      </Pressable>
     </ScrollView>
   );
 }

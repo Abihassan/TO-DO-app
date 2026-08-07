@@ -15,7 +15,8 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "package": "com.abihassan07.todo"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -23,6 +24,11 @@
     "plugins": [
       "@react-native-community/datetimepicker",
       "expo-sharing"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "088d4c29-36f3-4b04-ad67-279e4a4dd39d"
+      }
+    }
   }
 }
